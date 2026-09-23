@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Παραδοσιακό Τάβλι - Πόρτες</title>
+    <!-- Tailwind CSS for modern responsive UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #1e1e24; color: #f3f4f6; }
+        /* Custom board textures and styling */
+        .board-wood {
+            background: linear-gradient(135deg, #3c2415 0%, #22130a 100%);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+        .triangle-up {
+            width: 0;
+            height: 0;
+            border-left: 18px solid transparent;
+            border-right: 18px solid transparent;
+            border-bottom: 180px solid var(--tri-color);
+        }
+        .triangle-down {
+            width: 0;
+            height: 0;
+            border-left: 18px solid transparent;
+            border-right: 18px solid transparent;
+            border-top: 180px solid var(--tri-color);
+        }
+        .checker {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 11px;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 6px rgba(0,0,0,0.4);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            position: absolute;
+            z-index: 10;
+        }
+        .checker:hover { transform: scale(1.08); }
+        .checker-white {
+            background: radial-gradient(circle at 30% 30%, #fde047 0%, #ca8a04 100%);
+            color: #422006;
+            border: 2px solid #eab308;
+        }
+        .checker-black {
+            background: radial-gradient(circle at 30% 30%, #4ade80 0%, #166534 100%);
+            color: #052e16;
+            border: 2px solid #22c55e;
+        }
+        .checker.selected {
+            ring: 4px;
+            box-shadow: 0 0 0 4px #ffffff, inset 0 2px 4px rgba(255,255,255,0.5);
+        }
+        /* Custom scrollbar for logs */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between select-none">
+
+    <header class="bg-gray-900 border-b border-gray-800 py-3 px-6 shadow-md">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-600 text-white p-2.5 rounded-xl shadow-lg flex items-center justify-center">
+                    <i class="fa-solid fa-dice text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">ΤΑΒΛΑΚΙ ΣΤΟ ΛΙΘΙ - Σειρά 3 Αγώνων</h1>
+                    <p class="text-xs text-amber-400 font-medium" id="series-score-label">Σκορ Σειράς: Κίτρινα 0 - 0 Πράσινα</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <button onclick="resetSeries()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium rounded-lg border border-gray-700 transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-rotate-right"></i> Νέα Σειρά
+                </button>
+                <button onclick="toggleGameMode()" id="mode-btn" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-robot"></i> vs AI
+                </button>
+                <button onclick="toggleGameVariant()" id="variant-btn" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-chess-board"></i> Παραλλαγή: Πόρτες
+                </button>
+                <button onclick="toggleRules()" class="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-book-open"></i> Κανόνες
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 flex flex-col lg:flex-row gap-6 items-center justify-center">
+        
+        <!-- Game Left/Top Panel: Score & Status -->
+        <div class="w-full lg:w-72 flex flex-col gap-4">
+            <!-- Turn Indicator Card -->
+            <div class="bg-gray-800 border border-gray-700 p-4 rounded-2xl shadow-lg">
+                <h2 class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2">Κατάσταση Παιχνιδιού</h2>
+                <div id="status-box" class="flex items-center gap-3 bg-gray-900/80 p-3 rounded-xl border border-gray-700/50">
+                    <div id="current-player-icon" class="w-8 h-8 rounded-full checker checker-white relative static"></div>
+                    <div>
+                        <div id="turn-text" class="text-sm font-bold text-white">Σειρά: Κίτρινα</div>
+                        <div id="sub-turn-text" class="text-xs text-amber-400">Ρίψτε τα ζάρια σας!</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dice Rolling Panel -->
+            <div class="bg-gray-800 border border-gray-700 p-4 rounded-2xl shadow-lg flex flex-col items-center gap-4">
+                <h2 class="text-xs uppercase tracking-wider text-gray-400 font-semibold self-start">Ζάρια & Κινήσεις</h2>
+                <div class="flex items-center justify-center gap-4 h-16 w-full bg-gray-900/60 rounded-xl border border-gray-700/50 p-2" id="dice-container">
+                    <div class="text-gray-500 text-sm italic">Πατήστε Ρίψη</div>
+                </div>
+                <button id="roll-btn" onclick="rollDice()" class="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-dice-five"></i> Ρίψη Ζαριών
+                </button>
+            </div>
+
+            <!-- Game Activity Log -->
+            <div class="bg-gray-800 border border-gray-700 p-4 rounded-2xl shadow-lg flex flex-col flex-1 max-h-48">
+                <h2 class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2">Ιστορικό Κινήσεων</h2>
+                <div id="game-log" class="flex-1 overflow-y-auto space-y-1.5 text-xs text-gray-300 pr-1">
+                    <div class="text-gray-500 italic">Το παιχνίδι ξεκίνησε. Καλή διασκέδαση!</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative board-wood p-4 sm:p-6 rounded-3xl border-4 border-amber-900/60 w-full max-w-[720px] aspect-[16/10] flex flex-col justify-between shadow-2xl">
+            <!-- Center bar partition separator -->
+            <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-10 bg-amber-950/80 border-x border-amber-900/40 flex flex-col items-center justify-center z-20">
+                <div id="bar-white" onclick="clickBar('white')" class="w-7 h-16 bg-gray-700/60 rounded-lg border border-gray-600 mb-2 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600/80 transition" title="Λευκά στον αέρα"></div>
+                <div id="bar-black" onclick="clickBar('black')" class="w-7 h-16 bg-gray-700/60 rounded-lg border border-gray-600 mt-2 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600/80 transition" title="Μαύρα στον αέρα"></div>
+            </div>
+
+            <!-- Top Row Triangles (12 to 1) -->
+            <div class="grid grid-cols-12 h-[42%] relative">
+                <!-- Triangle 12 to 7 (Left top) -->
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(11)">
+                    <div class="triangle-up" style="--tri-color: #d97706;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-400 font-bold">12</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="11"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(10)">
+                    <div class="triangle-up" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-600 font-bold">11</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="10"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(9)">
+                    <div class="triangle-up" style="--tri-color: #d97706;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-400 font-bold">10</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="9"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(8)">
+                    <div class="triangle-up" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-600 font-bold">9</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="8"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(7)">
+                    <div class="triangle-up" style="--tri-color: #d97706;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-400 font-bold">8</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="7"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(6)">
+                    <div class="triangle-up" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-600 font-bold">7</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="6"></div>
+                </div>
+                <!-- Right top (6 to 1) -->
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(5)">
+                    <div class="triangle-up" style="--tri-color: #d97706;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-400 font-bold">6</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="5"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(4)">
+                    <div class="triangle-up" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-600 font-bold">5</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="4"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(3)">
+                    <div class="triangle-up" style="--tri-color: #d97706;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-400 font-bold">4</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="3"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(2)">
+                    <div class="triangle-up" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-600 font-bold">3</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="2"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(1)">
+                    <div class="triangle-up" style="--tri-color: #d97706;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-400 font-bold">2</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="1"></div>
+                </div>
+                <div class="relative flex justify-center cursor-pointer" onclick="clickTriangle(0)">
+                    <div class="triangle-up" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute top-1 text-[10px] text-gray-600 font-bold">1</div>
+                    <div class="checkers-stack top-stack absolute top-0 flex flex-col items-center w-full" data-index="0"></div>
+                </div>
+            </div>
+
+            <!-- Middle divider decorative line -->
+            <div class="h-2 bg-amber-950/60 rounded-full w-full my-1 shadow-inner"></div>
+
+            <!-- Bottom Row Triangles (13 to 24) -->
+            <div class="grid grid-cols-12 h-[42%] relative">
+                <!-- Bottom Left (13 to 18) -->
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(12)">
+                    <div class="triangle-down" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-600 font-bold">13</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="12"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(13)">
+                    <div class="triangle-down" style="--tri-color: #d97706;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-400 font-bold">14</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="13"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(14)">
+                    <div class="triangle-down" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-600 font-bold">15</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="14"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(15)">
+                    <div class="triangle-down" style="--tri-color: #d97706;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-400 font-bold">16</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="15"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(16)">
+                    <div class="triangle-down" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-600 font-bold">17</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="16"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(17)">
+                    <div class="triangle-down" style="--tri-color: #d97706;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-400 font-bold">18</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="17"></div>
+                </div>
+                <!-- Bottom Right (19 to 24) -->
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(18)">
+                    <div class="triangle-down" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-600 font-bold">19</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="18"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(19)">
+                    <div class="triangle-down" style="--tri-color: #d97706;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-400 font-bold">20</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="19"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(20)">
+                    <div class="triangle-down" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-600 font-bold">21</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="20"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(21)">
+                    <div class="triangle-down" style="--tri-color: #d97706;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-400 font-bold">22</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="21"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(22)">
+                    <div class="triangle-down" style="--tri-color: #f3f4f6;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-600 font-bold">23</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="22"></div>
+                </div>
+                <div class="relative flex justify-center items-end cursor-pointer" onclick="clickTriangle(23)">
+                    <div class="triangle-down" style="--tri-color: #d97706;"></div>
+                    <div class="absolute bottom-1 text-[10px] text-gray-400 font-bold">24</div>
+                    <div class="checkers-stack bottom-stack absolute bottom-0 flex flex-col-reverse items-center w-full" data-index="23"></div>
+                </div>
+            </div>
+
+            <!-- Home Bear Off trays (Right side indicators) -->
+            <div class="absolute right-[-45px] top-0 bottom-0 w-10 flex flex-col justify-between py-2">
+                <div id="bearoff-white" class="h-1/2 bg-gray-800/80 border border-gray-700 rounded-lg flex flex-col items-center justify-center text-xs font-bold text-gray-300" title="Λευκά που βγήκαν">
+                    <span id="white-off-count">0</span>
+                </div>
+                <div id="bearoff-black" class="h-1/2 bg-gray-800/80 border border-gray-700 rounded-lg flex flex-col items-center justify-center text-xs font-bold text-gray-300" title="Μαύρα που βγήκαν">
+                    <span id="black-off-count">0</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Rules -->
+    <div id="rules-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-700 max-w-md w-full p-6 rounded-3xl shadow-2xl flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-amber-500"></i> ΤΑΒΛΑΚΙ ΣΤΟ ΛΙΘΙ - 3 Παιχνίδια
+                </h3>
+                <button onclick="toggleRules()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="text-sm text-gray-300 space-y-2 max-h-60 overflow-y-auto pr-2">
+                <p><strong>Σειρά 3 Παιχνιδιών:</strong> Στην Ελλάδα παίζουμε σειρά τριών αγώνων: 1) Πόρτες, 2) Πλακωτό, 3) Φευγά! Ο πρώτος που θα φτάσει τις 2 νίκες κερδίζει τη συνολική σειρά.</p>
+                <p><strong>1. Πόρτες:</strong> Κλασικό παιχνίδι ελευθερίας κινήσεων και χτυπημάτων.</p>
+                <p><strong>2. Πλακωτό:</strong> Πλακώνετε το πούλι του αντιπάλου πατώντας ακριβώς πάνω του (το κρατάτε αιχμάλωτο)!</p>
+                <p><strong>3. Φευγά:</strong> Τα πούλια κινούνται κυκλικά προς την ίδια κατεύθυνση, προσπαθώντας να ξεφύγουν πρώτα.</p>
+            </div>
+            <button onclick="toggleRules()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl transition">Κατάλαβα</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State Variables
+        let board = Array(24).fill(null).map(() => ({ player: null, count: 0 }));
+        let bar = { yellow: 0, green: 0 };
+        let bearOff = { yellow: 0, green: 0 };
+        let currentPlayer = 'yellow'; // 'yellow' (Player 1), 'green' (Player 2 or AI)
+        let dice = [];
+        let diceAvailable = [];
+        let selectedIndex = null; 
+        let validMoves = []; 
+        let vsAI = true; 
+
+        // 3-Game Series State (1: Portes, 2: Plakoto, 3: Fevga)
+        let currentVariantIndex = 0;
+        const variants = ['portes', 'plakoto', 'fevga'];
+        const variantNames = {'portes': 'Πόρτες', 'plakoto': 'Πλακωτό', 'fevga': 'Φευγά'};
+        let seriesScores = { yellow: 0, green: 0 };
+
+        function toggleGameMode() {
+            vsAI = !vsAI;
+            const btn = document.getElementById('mode-btn');
+            if (vsAI) {
+                btn.innerHTML = `<i class="fa-solid fa-robot"></i> vs AI`;
+                logMessage("Λειτουργία: Εναντίον Υπολογιστή.");
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-user-group"></i> 2 Παίκτες`;
+                logMessage("Λειτουργία: 2 Παίκτες τοπικά.");
+            }
+            resetGame();
+        }
+
+        function toggleGameVariant() {
+            currentVariantIndex = (currentVariantIndex + 1) % variants.length;
+            updateVariantButtonText();
+            logMessage(`Αλλαγή παιχνιδιού σε: ${variantNames[variants[currentVariantIndex]]}`);
+            resetGame();
+        }
+
+        function updateVariantButtonText() {
+            const btn = document.getElementById('variant-btn');
+            btn.innerHTML = `<i class="fa-solid fa-chess-board"></i> Παιχνίδι: ${variantNames[variants[currentVariantIndex]]} (${currentVariantIndex + 1}/3)`;
+        }
+
+        function initGame() {
+            for (let i = 0; i < 24; i++) board[i] = { player: null, count: 0 };
+            bar = { yellow: 0, green: 0 };
+            bearOff = { yellow: 0, green: 0 };
+            currentPlayer = 'yellow';
+            dice = [];
+            diceAvailable = [];
+            selectedIndex = null;
+            validMoves = [];
+
+            let variant = variants[currentVariantIndex];
+
+            if (variant === 'portes') {
+                // Portes Setup
+                board[23] = { player: 'yellow', count: 2 };
+                board[12] = { player: 'yellow', count: 5 };
+                board[7]  = { player: 'yellow', count: 3 };
+                board[5]  = { player: 'yellow', count: 5 };
+
+                board[0]  = { player: 'green', count: 2 };
+                board[11] = { player: 'green', count: 5 };
+                board[16] = { player: 'green', count: 3 };
+                board[18] = { player: 'green', count: 5 };
+            } else if (variant === 'plakoto') {
+                // Plakoto Setup: All 15 checkers on starting points 24 (yellow) and 1 (green)
+                board[23] = { player: 'yellow', count: 15 };
+                board[0]  = { player: 'green', count: 15 };
+            } else {
+                // Fevga Setup: Both start at 23/11 or similar running format, let's put 15 checkers at position 23 moving clockwise
+                board[23] = { player: 'yellow', count: 15 };
+                board[11] = { player: 'green', count: 15 };
+            }
+
+            updateSeriesDisplay();
+            logMessage(`Ξεκίνησε το ${variantNames[variant]}! Σειρά των Κίτρινων.`);
+            updateUI();
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        function resetSeries() {
+            seriesScores = { yellow: 0, green: 0 };
+            currentVariantIndex = 0;
+            updateVariantButtonText();
+            logMessage("Νέα σειρά 3 αγώνων ξεκίνησε από την αρχή!");
+            initGame();
+        }
+
+        function updateSeriesDisplay() {
+            document.getElementById('series-score-label').textContent = `Σκορ Σειράς: Κίτρινα ${seriesScores.yellow} - ${seriesScores.green} Πράσινα | Αγώνας ${currentVariantIndex + 1}/3 (${variantNames[variants[currentVariantIndex]]})`;
+        }
+
+        function toggleRules() {
+            const modal = document.getElementById('rules-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function logMessage(msg) {
+            const logBox = document.getElementById('game-log');
+            const div = document.createElement('div');
+            div.textContent = msg;
+            logBox.prepend(div);
+        }
+
+        function rollDice() {
+            if (diceAvailable.length > 0) return;
+
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            dice = [d1, d2];
+            if (d1 === d2) {
+                diceAvailable = [d1, d1, d1, d1];
+                logMessage(`Ζάρια: ${d1} - ${d1} (Διπλές!)`);
+            } else {
+                diceAvailable = [d1, d2];
+                logMessage(`Ζάρια: ${d1} και ${d2}`);
+            }
+
+            document.getElementById('roll-btn').disabled = true;
+            document.getElementById('roll-btn').classList.add('opacity-50', 'cursor-not-allowed');
+            
+            updateUI();
+            checkAvailableMoves();
+        }
+
+        function checkAvailableMoves() {
+            if (diceAvailable.length === 0) return;
+            
+            let hasMoves = false;
+            let playerName = currentPlayer === 'yellow' ? 'Κίτρινα' : 'Πράσινα';
+            let variant = variants[currentVariantIndex];
+
+            if (variant === 'portes' && bar[currentPlayer] > 0) {
+                for (let d of [...new Set(diceAvailable)]) {
+                    let target = currentPlayer === 'yellow' ? 24 - d : d - 1;
+                    if (isValidDestination(target, currentPlayer)) {
+                        hasMoves = true;
+                        break;
+                    }
+                }
+            } else {
+                for (let i = 0; i < 24; i++) {
+                    if (board[i].player === currentPlayer) {
+                        for (let d of [...new Set(diceAvailable)]) {
+                            let target = getTargetIndex(i, d, currentPlayer, variant);
+                            if (canMoveTo(i, target, d)) {
+                                hasMoves = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!hasMoves) {
+                logMessage(`Ο παίκτης ${playerName} δεν έχει διαθέσιμες κινήσεις! Σειρά αντιπάλου.`);
+                setTimeout(() => { switchTurn(); }, 1500);
+            } else if (vsAI && currentPlayer === 'green') {
+                setTimeout(makeAIMove, 900);
+            }
+        }
+
+        function getTargetIndex(from, die, player, variant) {
+            if (variant === 'fevga') {
+                // Fevga moves in same circular direction (e.g., from 23 down to 0, then 23)
+                let t = from - die;
+                return t < 0 ? t + 24 : t;
+            }
+            return player === 'yellow' ? from - die : from + die;
+        }
+
+        function makeAIMove() {
+            if (diceAvailable.length === 0 || currentPlayer !== 'green') return;
+            let variant = variants[currentVariantIndex];
+            let die = diceAvailable[0];
+            let moved = false;
+
+            if (variant === 'portes' && bar['green'] > 0) {
+                let target = die - 1;
+                if (isValidDestination(target, 'green')) {
+                    bar['green']--;
+                    applyMoveToTarget(target, die, 'green', variant);
+                    removeUsedDie(die);
+                    logMessage(`CPU (Πράσινα): Είσοδος στο ${target + 1}`);
+                    moved = true;
+                }
+            } else {
+                let allMoves = [];
+                for (let i = 0; i < 24; i++) {
+                    if (board[i].player === 'green') {
+                        for (let d of diceAvailable) {
+                            let target = getTargetIndex(i, d, 'green', variant);
+                            if (canMoveTo(i, target, d)) {
+                                let score = d;
+                                if (variant === 'portes' && target < 24 && board[target].player === 'yellow' && board[target].count === 1) score += 50;
+                                allMoves.push({ from: i, to: target, die: d, score: score });
+                            }
+                        }
+                    }
+                }
+
+                if (allMoves.length > 0) {
+                    allMoves.sort((a, b) => b.score - a.score);
+                    let best = allMoves[0];
+
+                    board[best.from].count--;
+                    if (board[best.from].count === 0) board[best.from].player = null;
+                    applyMoveToTarget(best.to, best.die, 'green', variant);
+                    removeUsedDie(best.die);
+                    logMessage(`CPU (Πράσινα): Κίνηση από ${best.from + 1} σε ${best.to + 1}`);
+                    moved = true;
+                }
+            }
+
+            if (!moved) {
+                diceAvailable.shift();
+                logMessage(`CPU (Πράσινα): Απώλεια ζαριού ${die}.`);
+            }
+
+            checkWinOrNext();
+            if (diceAvailable.length > 0 && currentPlayer === 'green' && vsAI) {
+                setTimeout(makeAIMove, 700);
+            }
+        }
+
+        function switchTurn() {
+            currentPlayer = currentPlayer === 'yellow' ? 'green' : 'yellow';
+            dice = [];
+            diceAvailable = [];
+            selectedIndex = null;
+            validMoves = [];
+
+            let playerName = currentPlayer === 'yellow' ? 'Κίτρινα' : 'Πράσινα';
+            logMessage(`Σειρά για τα ${playerName}.`);
+
+            if (!(vsAI && currentPlayer === 'green')) {
+                document.getElementById('roll-btn').disabled = false;
+                document.getElementById('roll-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                document.getElementById('roll-btn').disabled = true;
+                document.getElementById('roll-btn').classList.add('opacity-50', 'cursor-not-allowed');
+                setTimeout(rollDiceForAI, 600);
+            }
+            updateUI();
+        }
+
+        function rollDiceForAI() {
+            if (currentPlayer !== 'green' || !vsAI) return;
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            dice = [d1, d2];
+            if (d1 === d2) {
+                diceAvailable = [d1, d1, d1, d1];
+                logMessage(`CPU διπλές: ${d1}`);
+            } else {
+                diceAvailable = [d1, d2];
+                logMessage(`CPU ζάρια: ${d1}, ${d2}`);
+            }
+            updateUI();
+            setTimeout(makeAIMove, 600);
+        }
+
+        function clickBar(playerColor) {
+            if (vsAI && currentPlayer === 'green') return;
+            if (playerColor !== currentPlayer || bar[currentPlayer] === 0 || diceAvailable.length === 0) return;
+            selectedIndex = 'bar-' + playerColor;
+            validMoves = [];
+            let uniqueDice = [...new Set(diceAvailable)];
+            uniqueDice.forEach(d => {
+                let target = currentPlayer === 'yellow' ? 24 - d : d - 1;
+                if (isValidDestination(target, currentPlayer)) validMoves.push(target);
+            });
+            updateUI();
+        }
+
+        function clickTriangle(index) {
+            if (vsAI && currentPlayer === 'green') return;
+            if (diceAvailable.length === 0) return;
+            let variant = variants[currentVariantIndex];
+
+            if (selectedIndex !== null) {
+                if (selectedIndex === 'bar-' + currentPlayer) {
+                    let dieUsed = null;
+                    for (let d of diceAvailable) {
+                        let target = currentPlayer === 'yellow' ? 24 - d : d - 1;
+                        if (target === index && isValidDestination(index, currentPlayer)) { dieUsed = d; break; }
+                    }
+                    if (dieUsed !== null) { executeBarMove(dieUsed, index); return; }
+                } else if (typeof selectedIndex === 'number') {
+                    if (selectedIndex === index) { selectedIndex = null; validMoves = []; updateUI(); return; }
+                    if (validMoves.includes(index)) { executeMove(selectedIndex, index); return; }
+                }
+            }
+
+            if (variant === 'portes' && bar[currentPlayer] > 0) {
+                logMessage("Έχετε πούλια στον αέρα! Βγάλτε τα πρώτα.");
+                return;
+            }
+
+            if (board[index].player === currentPlayer && board[index].count > 0) {
+                selectedIndex = index;
+                validMoves = [];
+                let uniqueDice = [...new Set(diceAvailable)];
+                uniqueDice.forEach(d => {
+                    let target = getTargetIndex(index, d, currentPlayer, variant);
+                    if (canMoveTo(index, target, d)) validMoves.push(target);
+                });
+                updateUI();
+            }
+        }
+
+        function isValidDestination(target, player) {
+            if (target < 0 || target > 23) return false;
+            let dest = board[target];
+            let variant = variants[currentVariantIndex];
+
+            if (variant === 'plakoto') {
+                // In Plakoto, landing on single opponent checker traps it (plakwma)
+                if (dest.player === null || dest.player === player || dest.count === 1) return true;
+                return false;
+            }
+            if (variant === 'fevga') {
+                if (dest.player === null || dest.player === player || dest.count === 1) return true;
+                return false;
+            }
+            // Portes rule
+            return dest.player === null || dest.player === player || dest.count === 1;
+        }
+
+        function canMoveTo(from, target, die) {
+            let variant = variants[currentVariantIndex];
+            if (canBearOff(currentPlayer)) {
+                // Bear off checks
+                if (variant === 'portes') {
+                    if (currentPlayer === 'yellow' && from - die < 0) return true;
+                    if (currentPlayer === 'green' && from + die > 23) return true;
+                }
+            }
+            return isValidDestination(target, currentPlayer);
+        }
+
+        function canBearOff(player) {
+            if (bar[player] > 0) return false;
+            let countInHome = 0;
+            let start = player === 'yellow' ? 0 : 18;
+            let end = player === 'yellow' ? 5 : 23;
+            for (let i = 0; i < 24; i++) {
+                if (board[i].player === player) {
+                    if (i >= start && i <= end) countInHome += board[i].count;
+                    else return false;
+                }
+            }
+            return (countInHome + bearOff[player]) === 15;
+        }
+
+        function executeBarMove(die, target) {
+            bar[currentPlayer]--;
+            applyMoveToTarget(target, die, currentPlayer, variants[currentVariantIndex]);
+            removeUsedDie(die);
+            selectedIndex = null;
+            validMoves = [];
+            checkWinOrNext();
+        }
+
+        function executeMove(from, to) {
+            let die = Math.abs(to - from);
+            let variant = variants[currentVariantIndex];
+            let playerName = currentPlayer === 'yellow' ? 'Κίτρινα' : 'Πράσινα';
+
+            board[from].count--;
+            if (board[from].count === 0) board[from].player = null;
+
+            applyMoveToTarget(to, die, currentPlayer, variant);
+            removeUsedDie(die);
+
+            selectedIndex = null;
+            validMoves = [];
+            checkWinOrNext();
+        }
+
+        function applyMoveToTarget(target, die, player, variant) {
+            let dest = board[target];
+            if (variant === 'portes' && dest.player && dest.player !== player && dest.count === 1) {
+                bar[dest.player]++;
+                dest.player = player;
+                dest.count = 1;
+                logMessage(`Χτύπημα! Πούλι πήγε στον αέρα.`);
+            } else if (dest.player === null) {
+                dest.player = player;
+                dest.count = 1;
+            } else {
+                dest.count++;
+            }
+        }
+
+        function removeUsedDie(die) {
+            let index = diceAvailable.indexOf(die);
+            if (index !== -1) diceAvailable.splice(index, 1);
+            else diceAvailable.pop();
+        }
+
+        function checkWinOrNext() {
+            let playerName = currentPlayer === 'yellow' ? 'Κίτρινα' : 'Πράσινα';
+            // Simulated win condition check
+            let playerCheckersLeft = 0;
+            for (let i = 0; i < 24; i++) {
+                if (board[i].player === currentPlayer) playerCheckersLeft += board[i].count;
+            }
+
+            if (playerCheckersLeft === 0 || bearOff[currentPlayer] >= 15) {
+                logMessage(`🏆 Ο παίκτης ${playerName} ΚΕΡΔΙΣΕ ΤΟΝ ΑΓΩΝΑ (${variantNames[variants[currentVariantIndex]]})! 🏆`);
+                seriesScores[currentPlayer]++;
+                updateSeriesDisplay();
+                
+                setTimeout(() => {
+                    if (currentVariantIndex < 2) {
+                        currentVariantIndex++;
+                        updateVariantButtonText();
+                        alert(`Ο παίκτης ${playerName} κέρδισε το ${variantNames[variants[currentVariantIndex - 1]]}! Συνεχίζουμε με το ${variantNames[variants[currentVariantIndex]]}.`);
+                        initGame();
+                    } else {
+                        alert(`Τέλος σειράς! Συνολικός νικητής της σειράς 3 αγώνων: ${playerName}!`);
+                        resetSeries();
+                    }
+                }, 1000);
+                return;
+            }
+
+            updateUI();
+            if (diceAvailable.length === 0) {
+                setTimeout(() => { switchTurn(); }, 800);
+            } else {
+                checkAvailableMoves();
+            }
+        }
+
+        function updateUI() {
+            const turnText = document.getElementById('turn-text');
+            const subTurnText = document.getElementById('sub-turn-text');
+            const playerIcon = document.getElementById('current-player-icon');
+
+            let playerName = currentPlayer === 'yellow' ? 'Κίτρινα' : (vsAI ? 'CPU (Πράσινα)' : 'Πράσινα');
+            turnText.textContent = `Σειρά: ${playerName}`;
+            playerIcon.className = `w-8 h-8 rounded-full checker checker-${currentPlayer} relative static shadow`;
+
+            if (diceAvailable.length > 0) {
+                subTurnText.textContent = `Ζάρια: ${diceAvailable.join(', ')}`;
+            } else {
+                subTurnText.textContent = vsAI && currentPlayer === 'green' ? 'Σκέψη AI...' : 'Ρίψτε τα ζάρια!';
+            }
+
+            const diceContainer = document.getElementById('dice-container');
+            if (dice.length > 0 && diceAvailable.length > 0) {
+                diceContainer.innerHTML = diceAvailable.map(d => `
+                    <div class="w-10 h-10 bg-amber-500 text-gray-950 font-bold text-lg rounded-xl shadow-md flex items-center justify-center border border-amber-400">
+                        ${d}
+                    </div>
+                `).join('');
+            } else {
+                diceContainer.innerHTML = `<div class="text-gray-500 text-sm italic">${vsAI && currentPlayer === 'green' ? 'AI...' : 'Πατήστε Ρίψη'}</div>`;
+            }
+
+            document.getElementById('bar-white').innerHTML = bar.yellow > 0 ? `<div class="w-6 h-6 rounded-full checker checker-yellow text-[10px] relative static">${bar.yellow}</div>` : '';
+            document.getElementById('bar-black').innerHTML = bar.green > 0 ? `<div class="w-6 h-6 rounded-full checker checker-green text-[10px] relative static">${bar.green}</div>` : '';
+
+            document.getElementById('white-off-count').textContent = bearOff.yellow;
+            document.getElementById('black-off-count').textContent = bearOff.green;
+
+            for (let i = 0; i < 24; i++) {
+                let stackEl = document.querySelector(`[data-index="${i}"]`);
+                if (!stackEl) continue;
+
+                let content = '';
+                let cell = board[i];
+                let isSelected = selectedIndex === i;
+                let isValidTarget = validMoves.includes(i);
+                let parentTriangle = stackEl.parentElement;
+
+                if (isValidTarget) parentTriangle.style.boxShadow = 'inset 0 0 0 3px #10b981';
+                else parentTriangle.style.boxShadow = 'none';
+
+                if (cell.count > 0) {
+                    for (let c = 0; c < Math.min(cell.count, 5); c++) {
+                        let topOffset = c * 24;
+                        let extraBadge = (c === 4 && cell.count > 5) ? `<span class="absolute text-[10px] font-extrabold text-white bg-black/60 px-1 rounded">${cell.count}</span>` : '';
+                        let selectedClass = (isSelected && c === cell.count - 1) ? 'ring-4 ring-amber-400' : '';
+                        content += `
+                            <div class="checker checker-${cell.player} ${selectedClass}" style="top: ${topOffset}px;">
+                                ${extraBadge}
+                            </div>
+                        `;
+                    }
+                }
+                stackEl.innerHTML = content;
+            }
+        }
+
+        window.onload = function() {
+            updateVariantButtonText();
+            initGame();
+        };
+    </script>
+</body>
+</html>
