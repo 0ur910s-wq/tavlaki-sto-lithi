@@ -111,7 +111,7 @@
             background-color: var(--board-wood);
             border: 12px solid var(--board-border);
             border-radius: 14px;
-            width: 620px;
+            width: 660px;
             height: 440px;
             display: flex;
             box-shadow: 0 12px 30px rgba(0,0,0,0.8);
@@ -127,20 +127,47 @@
         .quadrant {
             flex: 1;
             display: flex;
-            flex-direction: column;
             height: 100%;
         }
 
-        .column-box {
+        /* Κάθε στήλη (τρίγωνο) */
+        .point-col {
             flex: 1;
+            height: 100%;
             display: flex;
             flex-direction: column;
-            height: 50%;
             position: relative;
+            cursor: pointer;
         }
 
-        .column-box.top { justify-content: flex-start; }
-        .column-box.bottom { justify-content: flex-end; }
+        .point-top {
+            height: 50%;
+            position: relative;
+            clip-path: polygon(0 0, 100% 0, 50% 100%);
+        }
+
+        .point-bot {
+            height: 50%;
+            position: relative;
+            margin-top: auto;
+            clip-path: polygon(0 100%, 100% 100%, 50% 0);
+        }
+
+        .point-col.dark .point-top, .point-col.dark .point-bot { background-color: var(--point-dark); }
+        .point-col.light .point-top, .point-col.light .point-bot { background-color: var(--point-light); }
+
+        .point-number {
+            position: absolute;
+            font-size: 9px;
+            color: #ddd;
+            z-index: 3;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            font-weight: bold;
+        }
+        .point-col .point-number.top-num { top: 4px; }
+        .point-col .point-number.bot-num { bottom: 4px; }
 
         .bar {
             width: 40px;
@@ -155,49 +182,21 @@
             position: relative;
         }
 
-        /* Τρίγωνα */
-        .point {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-
-        .point.top-tri { clip-path: polygon(0 0, 50% 100%, 100% 0); }
-        .point.bot-tri { clip-path: polygon(0 100%, 50% 0, 100% 100%); }
-
-        .point.dark { background-color: var(--point-dark); }
-        .point.light { background-color: var(--point-light); }
-
-        .point-number {
-            position: absolute;
-            font-size: 10px;
-            color: #ddd;
-            z-index: 3;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
-            font-weight: bold;
-        }
-        .top-tri ~ .point-number { bottom: 4px; }
-        .bot-tri ~ .point-number { top: 4px; }
-
         /* Πούλια */
         .checker-container {
             position: absolute;
             width: 100%;
-            height: 100%;
+            height: 50%;
             z-index: 2;
             display: flex;
             flex-direction: column;
             align-items: center;
             pointer-events: none;
+            left: 0;
         }
 
-        .column-box.top .checker-container { justify-content: flex-start; padding-top: 4px; }
-        .column-box.bottom .checker-container { justify-content: flex-end; padding-bottom: 4px; }
+        .checker-container.top { top: 0; justify-content: flex-start; padding-top: 4px; }
+        .checker-container.bot { bottom: 0; justify-content: flex-end; padding-bottom: 4px; }
 
         .checker {
             width: 28px;
@@ -317,13 +316,13 @@
             <div class="bear-off top" id="bear-off-green" title="Μαζεμένα Πράσινα"></div>
             <div class="bear-off bottom" id="bear-off-yellow" title="Μαζεμένα Κίτρινα"></div>
 
-            <!-- Top-Left: 12 to 7 -->
+            <!-- Left Half -->
             <div class="board-half">
                 <div class="quadrant" id="q-top-left"></div>
                 <div class="quadrant" id="q-bot-left"></div>
             </div>
             <div class="bar" id="bar-area"></div>
-            <!-- Top-Right: 6 to 1, Bottom-Right: 19 to 24 -->
+            <!-- Right Half -->
             <div class="board-half">
                 <div class="quadrant" id="q-top-right"></div>
                 <div class="quadrant" id="q-bot-right"></div>
@@ -359,14 +358,11 @@
         logMessage(`Ξεκίνησε το ${type}! Σειρά των Κίτρινων.`);
 
         if (type === 'Πόρτες') {
-            // Standard Portes setup (1-24)
-            // Yellow: 2 on 1, 5 on 12, 3 on 17, 5 on 19
             gameState.board[1] = Array(2).fill('yellow');
             gameState.board[12] = Array(5).fill('yellow');
             gameState.board[17] = Array(3).fill('yellow');
             gameState.board[19] = Array(5).fill('yellow');
 
-            // Green: 2 on 24, 5 on 13, 3 on 8, 5 on 6
             gameState.board[24] = Array(2).fill('green');
             gameState.board[13] = Array(5).fill('green');
             gameState.board[8] = Array(3).fill('green');
@@ -390,50 +386,73 @@
 
         qTL.innerHTML = ''; qBL.innerHTML = ''; qTR.innerHTML = ''; qBR.innerHTML = '';
 
-        // Standard Backgammon layout quadrants:
-        // Top-Left: Points 12, 11, 10, 9, 8, 7 (Top row, left side)
-        // Bottom-Left: Points 13, 14, 15, 16, 17, 18 (Bottom row, left side)
-        // Top-Right: Points 6, 5, 4, 3, 2, 1 (Top row, right side)
-        // Bottom-Right: Points 19, 20, 21, 22, 23, 24 (Bottom row, right side)
+        // Traditional layout:
+        // Top-Left quadrant: 12, 11, 10, 9, 8, 7 (Top row, pointing down)
+        // Bottom-Left quadrant: 13, 14, 15, 16, 17, 18 (Bottom row, pointing up)
+        // Top-Right quadrant: 6, 5, 4, 3, 2, 1 (Top row, pointing down)
+        // Bottom-Right quadrant: 19, 20, 21, 22, 23, 24 (Bottom row, pointing up)
 
-        renderGroup(qTL, [12, 11, 10, 9, 8, 7], 'top', 'top-tri');
-        renderGroup(qBL, [13, 14, 15, 16, 17, 18], 'bottom', 'bot-tri');
-        renderGroup(qTR, [6, 5, 4, 3, 2, 1], 'top', 'top-tri');
-        renderGroup(qBR, [19, 20, 21, 22, 23, 24], 'bottom', 'bot-tri');
+        renderQuadrantCols(qTL, [12, 11, 10], 'top', 'top');
+        renderQuadrantCols(qBL, [9, 8, 7], 'top', 'bot');
+        renderQuadrantCols(qTR, [13, 14, 15], 'bot', 'top');
+        renderQuadrantCols(qBR, [16, 17, 18], 'bot', 'bot');
+        
+        // Wait, let's map standard 4 blocks cleanly:
+        // Let's create a direct render function for each of the 4 quarters of 6 points:
+        renderPointsGroup(qTL, [12, 11, 10, 9, 8, 7], 'top');
+        renderPointsGroup(qBL, [13, 14, 15, 16, 17, 18], 'bottom');
+        renderPointsGroup(qTR, [6, 5, 4, 3, 2, 1], 'top');
+        renderPointsGroup(qBR, [19, 20, 21, 22, 23, 24], 'bottom');
 
         renderBearOff();
     }
 
-    function renderGroup(container, indices, verticalPos, triClass) {
+    function renderPointsGroup(container, indices, verticalHalf) {
         indices.forEach(idx => {
-            const box = document.createElement('div');
-            box.className = `column-box ${verticalPos}`;
-            box.style.flex = '1';
-            box.style.position = 'relative';
-            box.onclick = () => onPointClick(idx);
-
-            const tri = document.createElement('div');
-            tri.className = `point ${triClass} ${idx % 2 === 0 ? 'dark' : 'light'}`;
-            box.appendChild(tri);
+            const col = document.createElement('div');
+            col.className = `point-col ${idx % 2 === 0 ? 'dark' : 'light'}`;
+            col.onclick = () => onPointClick(idx);
 
             const num = document.createElement('div');
-            num.className = 'point-number';
+            num.className = `point-number ${verticalHalf === 'top' ? 'top-num' : 'bot-num'}`;
             num.innerText = idx;
-            box.appendChild(num);
+            col.appendChild(num);
 
-            const chkContainer = document.createElement('div');
-            chkContainer.className = 'checker-container';
-            
-            const checkers = gameState.board[idx];
-            checkers.forEach((color, cIdx) => {
-                if (cIdx < 6) {
-                    const chk = document.createElement('div');
-                    chk.className = `checker ${color} ${gameState.selectedPoint === idx && cIdx === checkers.length - 1 ? 'selected' : ''}`;
-                    chkContainer.appendChild(chk);
-                }
-            });
-            box.appendChild(chkContainer);
-            container.appendChild(box);
+            if (verticalHalf === 'top') {
+                const tri = document.createElement('div');
+                tri.className = 'point-top';
+                col.appendChild(tri);
+
+                const chkCont = document.createElement('div');
+                chkCont.className = 'checker-container top';
+                const checkers = gameState.board[idx];
+                checkers.forEach((color, cIdx) => {
+                    if (cIdx < 6) {
+                        const chk = document.createElement('div');
+                        chk.className = `checker ${color} ${gameState.selectedPoint === idx && cIdx === checkers.length - 1 ? 'selected' : ''}`;
+                        chkCont.appendChild(chk);
+                    }
+                });
+                col.appendChild(chkCont);
+            } else {
+                const chkCont = document.createElement('div');
+                chkCont.className = 'checker-container bot';
+                const checkers = gameState.board[idx];
+                checkers.forEach((color, cIdx) => {
+                    if (cIdx < 6) {
+                        const chk = document.createElement('div');
+                        chk.className = `checker ${color} ${gameState.selectedPoint === idx && cIdx === checkers.length - 1 ? 'selected' : ''}`;
+                        chkCont.appendChild(chk);
+                    }
+                });
+                col.appendChild(chkCont);
+
+                const tri = document.createElement('div');
+                tri.className = 'point-bot';
+                col.appendChild(tri);
+            }
+
+            container.appendChild(col);
         });
     }
 
