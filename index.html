@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ΤΑΒΛΑΚΙ ΣΤΟ ΛΙΘΙ — Ελληνικό τάβλι</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#123b37">
     <!-- Tailwind CSS for modern responsive UI styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for icons -->
@@ -36,6 +38,14 @@
         .exit-button { transition: transform .15s ease, filter .15s ease; }
         .exit-button:not(:disabled):hover { transform: translateY(-2px); filter: brightness(1.16); }
         .exit-button:disabled { opacity: .45; cursor: not-allowed; }
+        .dice-rolling { animation: diceRoll .65s cubic-bezier(.2,.8,.2,1); }
+        @keyframes diceRoll { 0% { transform: rotate(0) scale(.8); opacity:.35; } 45% { transform: rotate(220deg) scale(1.18); } 100% { transform: rotate(360deg) scale(1); opacity:1; } }
+        .checker.moving { animation: checkerMove .42s ease-out; }
+        @keyframes checkerMove { 0% { transform: translateY(-12px) scale(.86); opacity:.4; } 70% { transform: translateY(2px) scale(1.08); } 100% { transform: translateY(0) scale(1); opacity:1; } }
+        .achievement-pop { position: fixed; right: 1rem; bottom: 1rem; z-index: 80; background: linear-gradient(135deg,#e5b24b,#9b551d); color:#261306; padding:.85rem 1rem; border-radius:1rem; box-shadow:0 12px 30px rgba(0,0,0,.4); animation: toastIn .3s ease-out; }
+        .profile-stat { background: rgba(255,255,255,.06); border:1px solid rgba(228,170,66,.2); border-radius:.8rem; padding:.7rem; }
+        @media (max-width: 700px) { body { padding-bottom: env(safe-area-inset-bottom); } header .max-w-6xl { align-items: stretch; } header .flex-wrap { justify-content:center; } button, select { min-height: 42px; touch-action: manipulation; } main { padding:.55rem !important; gap:.7rem !important; } .board-wood { max-width:100vw !important; aspect-ratio: 1.4; } .board-wood .triangle-up { border-bottom-width: 105px; } .board-wood .triangle-down { border-top-width: 105px; } .board-wood .checker { width:23px; height:23px; } .board-wood + * { right:-2px !important; } }
+
         .toast { animation: toastIn .25s ease-out; }
         @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 700px) { .board-wood { padding: .65rem !important; border-width: 3px; } .checker { width: 24px; height: 24px; font-size: 9px; } .triangle-up { border-left-width: 13px; border-right-width: 13px; border-bottom-width: 125px; } .triangle-down { border-left-width: 13px; border-right-width: 13px; border-top-width: 125px; } }
@@ -115,9 +125,14 @@
                 <button onclick="toggleGameMode()" id="mode-btn" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-robot"></i> vs AI
                 </button>
+                <label class="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300">AI
+                    <select id="difficulty-select" onchange="changeDifficulty(this.value)" class="bg-transparent text-amber-300 font-semibold outline-none"><option value="easy">Εύκολο</option><option value="normal" selected>Κανονικό</option><option value="hard">Δύσκολο</option></select>
+                </label>
                 <button onclick="toggleGameVariant()" id="variant-btn" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-chess-board"></i> Παραλλαγή: Πόρτες
                 </button>
+                <button onclick="showProfile()" class="px-3 py-2 bg-sky-700 hover:bg-sky-600 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-user"></i> Προφίλ</button>
+                <button onclick="resumeSavedGame()" id="resume-btn" class="hidden px-3 py-2 bg-violet-700 hover:bg-violet-600 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow"><i class="fa-solid fa-rotate-left"></i> Συνέχεια</button>
                 <button onclick="toggleRules()" class="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-book-open"></i> Κανόνες
                 </button>
@@ -126,7 +141,7 @@
     </header>
 
     <main class="flex-1 max-w-5xl w-full mx-auto p-4 flex flex-col lg:flex-row gap-6 items-center justify-center">
-        
+
         <!-- Game Left/Top Panel: Score & Status -->
         <div class="w-full lg:w-72 flex flex-col gap-4">
             <!-- Turn Indicator Card -->
@@ -317,6 +332,17 @@
     </main>
     <div class="text-center text-xs text-stone-300/70 pb-3 px-4">Επίλεξε ένα πούλι για να δεις τις διαθέσιμες κινήσεις · όταν όλα είναι στο σπίτι, πάτησε <strong class="text-amber-300">ΒΓΑΛΕ</strong>.</div>
 
+    <!-- Profile / stats modal -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="glass-card max-w-md w-full p-6 rounded-3xl shadow-2xl">
+            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-white"><i class="fa-solid fa-medal text-amber-400"></i> Προφίλ παίκτη</h3><button onclick="showProfile()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
+            <label class="text-xs text-gray-300">Όνομα παίκτη<input id="profile-name" class="mt-1 w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-white" maxlength="20"></label>
+            <div id="profile-stats" class="grid grid-cols-2 gap-2 mt-4 text-sm"></div>
+            <h4 class="text-sm text-amber-300 font-semibold mt-5 mb-2">Achievements</h4><div id="achievement-list" class="text-xs text-gray-300 space-y-1"></div>
+            <h4 class="text-sm text-amber-300 font-semibold mt-5 mb-2">Τοπικό leaderboard</h4><div id="leaderboard-list" class="text-xs text-gray-300 space-y-1"></div>
+            <button onclick="saveProfile(); showProfile()" class="w-full mt-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl">Αποθήκευση προφίλ</button>
+        </div>
+    </div>
     <!-- Modal Rules -->
     <div id="rules-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-gray-900 border border-gray-700 max-w-md w-full p-6 rounded-3xl shadow-2xl flex flex-col gap-4">
@@ -344,15 +370,32 @@
         let currentPlayer = 'yellow'; // 'yellow' (Player 1), 'green' (Player 2 or AI)
         let dice = [];
         let diceAvailable = [];
-        let selectedIndex = null; 
-        let validMoves = []; 
-        let vsAI = true; 
+        let selectedIndex = null;
+        let validMoves = [];
+        let vsAI = true;
+        let difficulty = localStorage.getItem('tavlakiDifficulty') || 'normal';
+        let profile = JSON.parse(localStorage.getItem('tavlakiProfile') || 'null') || { name: 'Παίκτης', xp: 0, wins: 0, losses: 0, games: 0, streak: 0 };
+        let achievements = JSON.parse(localStorage.getItem('tavlakiAchievements') || '{}');
+        let audioContext = null;
 
         // 3-Game Series State (1: Portes, 2: Plakoto, 3: Fevga)
         let currentVariantIndex = 0;
         const variants = ['portes', 'plakoto', 'fevga'];
         const variantNames = {'portes': 'Πόρτες', 'plakoto': 'Πλακωτό', 'fevga': 'Φευγά'};
         let seriesScores = { yellow: 0, green: 0 };
+
+        const achievementDefs = { firstGame: ['Πρώτη παρτίδα', 'Ολοκλήρωσε την πρώτη σου παρτίδα'], firstWin: ['Πρώτη νίκη', 'Κέρδισε έναν αγώνα'], bearOff: ['Καθαρή έξοδος', 'Βγάλε το πρώτο σου πούλι'], hardWin: ['Σκληρός αντίπαλος', 'Κέρδισε στο Δύσκολο'] };
+        function persistProfile() { localStorage.setItem('tavlakiProfile', JSON.stringify(profile)); localStorage.setItem('tavlakiAchievements', JSON.stringify(achievements)); }
+        function addXP(amount, reason='') { profile.xp += amount; persistProfile(); if (reason) showAchievement(`+${amount} XP`, reason); }
+        function unlockAchievement(id) { if (achievements[id]) return; achievements[id]=Date.now(); const d=achievementDefs[id]; addXP(50, `Achievement: ${d[0]}`); }
+        function showAchievement(title, text) { const el=document.createElement('div'); el.className='achievement-pop'; el.innerHTML=`<strong>🏆 ${title}</strong><br><span>${text}</span>`; document.body.appendChild(el); setTimeout(()=>el.remove(), 3300); }
+        function changeDifficulty(value) { difficulty=value; localStorage.setItem('tavlakiDifficulty', value); logMessage(`Επίπεδο AI: ${value==='easy'?'Εύκολο':value==='hard'?'Δύσκολο':'Κανονικό'}.`); }
+        function playSound(kind) { try { audioContext ||= new (window.AudioContext || window.webkitAudioContext)(); const o=audioContext.createOscillator(), g=audioContext.createGain(); const f={dice:420,move:260,hit:110,win:660,off:520}[kind]||300; o.frequency.value=f; o.type=kind==='hit'?'sawtooth':'sine'; g.gain.setValueAtTime(.0001,audioContext.currentTime); g.gain.exponentialRampToValueAtTime(kind==='hit'?.12:.06,audioContext.currentTime+.01); g.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+.16); o.connect(g).connect(audioContext.destination); o.start(); o.stop(audioContext.currentTime+.18); } catch(e) {} }
+        function saveSession() { try { localStorage.setItem('tavlakiSession', JSON.stringify({board,bar,bearOff,currentPlayer,dice,diceAvailable,selectedIndex,validMoves,seriesScores,currentVariantIndex,vsAI,difficulty,savedAt:Date.now()})); document.getElementById('resume-btn')?.classList.remove('hidden'); } catch(e) {} }
+        function resumeSavedGame() { const raw=localStorage.getItem('tavlakiSession'); if (!raw) return; try { const x=JSON.parse(raw); Object.assign(window,{ }); board=x.board; bar=x.bar; bearOff=x.bearOff; currentPlayer=x.currentPlayer; dice=x.dice; diceAvailable=x.diceAvailable; selectedIndex=x.selectedIndex; validMoves=x.validMoves; seriesScores=x.seriesScores; currentVariantIndex=x.currentVariantIndex; vsAI=x.vsAI; difficulty=x.difficulty||difficulty; document.getElementById('difficulty-select').value=difficulty; updateVariantButtonText(); updateUI(); logMessage('Η προηγούμενη παρτίδα επαναφέρθηκε.'); } catch(e) { logMessage('Δεν ήταν δυνατή η επαναφορά της παρτίδας.'); } }
+        function showProfile() { const m=document.getElementById('profile-modal'); m.classList.toggle('hidden'); if (!m.classList.contains('hidden')) { document.getElementById('profile-name').value=profile.name; document.getElementById('profile-stats').innerHTML=`<div class="profile-stat"><b>${profile.xp}</b><br><span class="text-gray-400">XP</span></div><div class="profile-stat"><b>${profile.wins}</b><br><span class="text-gray-400">Νίκες</span></div><div class="profile-stat"><b>${profile.losses}</b><br><span class="text-gray-400">Ήττες</span></div><div class="profile-stat"><b>${profile.streak}</b><br><span class="text-gray-400">Σερί</span></div>`; document.getElementById('achievement-list').innerHTML=Object.entries(achievementDefs).map(([id,d])=>`<div class="${achievements[id]?'text-amber-300':'text-gray-500'}">${achievements[id]?'✓':'○'} ${d[0]} — ${d[1]}</div>`).join(''); const lb=JSON.parse(localStorage.getItem('tavlakiLeaderboard')||'[]').sort((a,b)=>b.xp-a.xp).slice(0,5); document.getElementById('leaderboard-list').innerHTML=lb.length?lb.map((x,i)=>`<div>${i+1}. <b>${x.name}</b> <span class="text-amber-300">${x.xp} XP</span></div>`).join(''):'<div class="text-gray-500">Γίνε ο πρώτος!</div>'; } }
+        function saveProfile() { profile.name=document.getElementById('profile-name').value.trim()||'Παίκτης'; persistProfile(); }
+        function updateLeaderboard() { const lb=JSON.parse(localStorage.getItem('tavlakiLeaderboard')||'[]').filter(x=>x.name!==profile.name); lb.push({name:profile.name,xp:profile.xp}); localStorage.setItem('tavlakiLeaderboard',JSON.stringify(lb.sort((a,b)=>b.xp-a.xp).slice(0,20))); }
 
         function toggleGameMode() {
             vsAI = !vsAI;
@@ -451,6 +494,9 @@
             const d1 = Math.floor(Math.random() * 6) + 1;
             const d2 = Math.floor(Math.random() * 6) + 1;
             dice = [d1, d2];
+            playSound('dice');
+            document.getElementById('dice-container').classList.add('dice-rolling');
+            setTimeout(()=>document.getElementById('dice-container').classList.remove('dice-rolling'),700);
             if (d1 === d2) {
                 diceAvailable = [d1, d1, d1, d1];
                 logMessage(`Ζάρια: ${d1} - ${d1} (Διπλές!)`);
@@ -461,7 +507,7 @@
 
             document.getElementById('roll-btn').disabled = true;
             document.getElementById('roll-btn').classList.add('opacity-50', 'cursor-not-allowed');
-            
+
             updateUI();
             checkAvailableMoves();
         }
@@ -471,7 +517,7 @@
             if (canBearOff(currentPlayer) && hasBearOffMove(currentPlayer)) {
                 logMessage('Υπάρχει διαθέσιμη έξοδος πούλιου από το σπίτι.');
             }
-            
+
             let hasMoves = false;
             let playerName = currentPlayer === 'yellow' ? 'Κίτρινα' : 'Πράσινα';
             let variant = variants[currentVariantIndex];
@@ -537,7 +583,8 @@
                         for (let d of diceAvailable) {
                             let target = getTargetIndex(i, d, 'green', variant);
                             if (isValidDestination(target, 'green') || canBearOffWithDie(i, d, 'green')) {
-                                let score = d;
+                                let score = difficulty === 'easy' ? Math.random() * 10 : d;
+                                if (difficulty === 'hard' && board[i].count >= 3) score += 5;
                                 if (variant === 'portes' && target >= 0 && target < 24 && board[target].player === 'yellow' && board[target].count === 1) score += 50;
                                 allMoves.push({ from: i, to: target, die: d, score: score });
                             }
@@ -719,6 +766,7 @@
         }
 
         function executeMove(from, to) {
+            playSound('move');
             let variant = variants[currentVariantIndex];
             let die = variant === 'fevga' ? ((from - to + 24) % 24) : Math.abs(to - from);
             let playerName = currentPlayer === 'yellow' ? 'Κίτρινα' : 'Πράσινα';
@@ -742,6 +790,7 @@
             board[selectedIndex].count--;
             if (board[selectedIndex].count === 0) board[selectedIndex].player = null;
             bearOff[player]++;
+            playSound('off'); unlockAchievement('bearOff'); addXP(10, 'Έξοδος πούλιου');
             removeUsedDie(die);
             logMessage(`${player === 'yellow' ? 'Κίτρινα' : 'Πράσινα'}: Έξοδος πούλιου (${die}).`);
             selectedIndex = null; validMoves = [];
@@ -754,7 +803,7 @@
                 bar[dest.player]++;
                 dest.player = player;
                 dest.count = 1;
-                logMessage(`Χτύπημα! Πούλι πήγε στον αέρα.`);
+                playSound('hit'); logMessage(`Χτύπημα! Πούλι πήγε στον αέρα.`);
             } else if (dest.player === null) {
                 dest.player = player;
                 dest.count = 1;
@@ -778,10 +827,10 @@
             }
 
             if (playerCheckersLeft === 0 || bearOff[currentPlayer] >= 15) {
-                logMessage(`🏆 Ο παίκτης ${playerName} ΚΕΡΔΙΣΕ ΤΟΝ ΑΓΩΝΑ (${variantNames[variants[currentVariantIndex]]})! 🏆`);
+                playSound('win'); profile.games++; profile.wins++; profile.streak++; addXP(100, 'Νίκη αγώνα'); unlockAchievement('firstWin'); if (difficulty==='hard') unlockAchievement('hardWin'); updateLeaderboard(); persistProfile(); logMessage(`🏆 Ο παίκτης ${playerName} ΚΕΡΔΙΣΕ ΤΟΝ ΑΓΩΝΑ (${variantNames[variants[currentVariantIndex]]})! 🏆`);
                 seriesScores[currentPlayer]++;
                 updateSeriesDisplay();
-                
+
                 setTimeout(() => {
                     if (currentVariantIndex < 2) {
                         currentVariantIndex++;
@@ -805,6 +854,7 @@
         }
 
         function updateUI() {
+            unlockAchievement('firstGame'); saveSession();
             const turnText = document.getElementById('turn-text');
             const subTurnText = document.getElementById('sub-turn-text');
             const playerIcon = document.getElementById('current-player-icon');
@@ -866,7 +916,10 @@
             }
         }
 
+        if ('serviceWorker' in navigator) window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
         window.onload = function() {
+            document.getElementById('difficulty-select').value = difficulty;
             updateVariantButtonText();
             initGame();
         };

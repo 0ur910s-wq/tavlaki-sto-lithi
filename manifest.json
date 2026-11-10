@@ -1,0 +1,10 @@
+{
+  "name": "ΤΑΒΛΑΚΙ ΣΤΟ ΛΙΘΙ",
+  "short_name": "Τάβλι",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#10191d",
+  "theme_color": "#123b37",
+  "description": "Ελληνικό τάβλι με AI, XP και στατιστικά.",
+  "icons": []
+}
